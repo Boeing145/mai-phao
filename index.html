@@ -1048,7 +1048,8 @@ async function doLogin() {
   try {
     const {data,error} = await sb.auth.signInWithPassword({email, password:pass});
     if(error) throw error;
-    const {data:profile} = await sb.from('users').select('role,name,worker_type').eq('id',data.user.id).single();
+    const {data:profile, error:pErr} = await sb.from('users').select('role,name,worker_type').eq('id',data.user.id).single();
+    if(pErr || !profile){ showAuthErr('ไม่พบข้อมูลผู้ใช้ กรุณาสมัครใหม่'); return; }
     afterLogin(profile.role, profile.name, profile.worker_type);
   } catch(e) {
     showAuthErr(e.message.includes('Invalid')?'ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง':e.message);
@@ -1086,10 +1087,11 @@ async function doSignup() {
   try {
     const {data,error} = await sb.auth.signUp({email, password:pass});
     if(error) throw error;
-    await sb.from('users').insert({
+    const {error:iErr} = await sb.from('users').insert({
       id:data.user.id, name, username:uname, email,
       role:authRole, worker_type:authWorkerType
     });
+    if(iErr) throw iErr;
     await sb.from('wallets').insert({user_id:data.user.id, balance:0});
     showAuthOk('สมัครสำเร็จ! ✅ กรุณาเข้าสู่ระบบ');
     setTimeout(()=>authTab('login'),1500);
